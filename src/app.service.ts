@@ -11,13 +11,14 @@ export class AppService implements OnModuleInit {
   private archiveHttp = new ArchiveHttp('http://198.199.80.167:3000')
   private archiveName = 'covidtrackertest';
 
+
   private usObserver = this.archiveHttp.getAllReports(this.archiveName, 'uscovid')
     .pipe(map((reports) => {
       const covidReports: IPerStateTestReport[] = [];
       const latestDate = new Date(Math.max.apply(null, reports.map((r) => new Date(r.timestamp))));
       reports.map((v) => console.log(v.timestamp))
       const latestReport = reports.find((report) => {
-        return report.timestamp === latestDate.toString()
+        return Date.parse(report.timestamp) === latestDate.getTime()
       });
       const USReportUpload = latestDate.toString();
       const USreportHash = latestReport.hash;
@@ -47,11 +48,9 @@ export class AppService implements OnModuleInit {
       let covidReports: ICOVID19GeneralReport[] = [];
 
       const latestDate = new Date(Math.max.apply(null, reports.map((r) => new Date(r.timestamp))))
-      const latestReport = reports.find((report) => report.timestamp === latestDate.toString());
-
+      const latestReport = reports.find((report) => Date.parse(report.timestamp) === latestDate.getTime());
       const worldWideReportUpload = latestDate.toString();
       const worldWidereportHash = latestReport.hash;
-      console.log(latestReport.hash);
       const totalConfirmed = latestReport.getValueByKey('totalGlobalInfected') as number;
       const totalDeath = latestReport.getValueByKey('totalGlobalDeathCount') as number;
       const totalRecovery = latestReport.getValueByKey('totalGlobalRecovered') as number;
