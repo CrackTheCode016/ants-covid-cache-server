@@ -1,20 +1,20 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { IPerStateTestReport, IUsCasesTestingProgression, ICOVID19GeneralReport, JSUResponse, USResponse } from './models/covid.model';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { IUsCasesTestingProgression, ICOVID19GeneralReport, JSUResponse, USResponse } from './models/covid.model';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { mergeMap, map, tap, switchMap, delay, mapTo } from 'rxjs/operators'
-import { Observable, of, Subject, interval, from, ObservedValueOf } from 'rxjs';
-import { ArchiveHttp } from 'ants-protocol-sdk'
+import { map } from 'rxjs/operators'
+import { ReportHttp } from 'ants-protocol-sdk'
+import { RepositoryFactoryHttp } from 'symbol-sdk';
 
 @Injectable()
 export class AppService implements OnModuleInit {
 
-  private archiveHttp = new ArchiveHttp('http://198.199.80.167:3000')
+  private repositoryFactory = new RepositoryFactoryHttp('http://178.128.184.107:3000')
+  private reportHttp = new ReportHttp(this.repositoryFactory)
   private archiveName = 'covidtrackertest';
 
 
-  private usObserver = this.archiveHttp.getAllReports(this.archiveName, 'uscovid')
+  private usObserver = this.reportHttp.getAllReportsForArchive(this.archiveName, 'uscovid')
     .pipe(map((reports) => {
-      const covidReports: IPerStateTestReport[] = [];
       const latestDate = new Date(Math.max.apply(null, reports.map((r) => new Date(r.timestamp))));
       reports.map((v) => console.log(v.timestamp))
       const latestReport = reports.find((report) => {
@@ -23,12 +23,11 @@ export class AppService implements OnModuleInit {
       const USReportUpload = latestDate.toString();
       const USreportHash = latestReport.hash;
 
-      const perState = latestReport.getValueByKey('perStateReport') as IPerStateTestReport[];
       const US = latestReport.getValueByKey('usOverallTestingProgression') as IUsCasesTestingProgression;
 
-      perState.forEach((point) => covidReports.push(point));
       let USSender = ''
-      if (latestReport.senderAddress.plain() === 'TBYKY5JIX3TSI6FBQYJHDOSQVMMRENKWYXAM43F4') {
+      console.log("US", latestReport.senderAddress.plain())
+      if (latestReport.senderAddress.plain() === 'TAAC7OZEOYERQJTZMVMRRM7SE7RU3ZNPP3QPYVAZ') {
         USSender = 'ants-uscovid-bot';
       } else {
         USSender = 'not valid sender';
@@ -37,13 +36,12 @@ export class AppService implements OnModuleInit {
         sender: USSender,
         hash: USreportHash,
         timestamp: USReportUpload,
-        states: perState,
         overall: US
       }
     }))
 
 
-  private jsuObserver = this.archiveHttp.getAllReports(this.archiveName, 'covid')
+  private jsuObserver = this.reportHttp.getAllReportsForArchive(this.archiveName, 'covid')
     .pipe(map((reports) => {
       let covidReports: ICOVID19GeneralReport[] = [];
 
